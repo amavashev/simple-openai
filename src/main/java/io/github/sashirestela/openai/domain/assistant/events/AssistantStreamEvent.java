@@ -23,6 +23,7 @@ import static io.github.sashirestela.openai.domain.assistant.events.EventName.TH
 import static io.github.sashirestela.openai.domain.assistant.events.EventName.THREAD_RUN_CANCELLED;
 import static io.github.sashirestela.openai.domain.assistant.events.EventName.THREAD_RUN_CANCELLING;
 import static io.github.sashirestela.openai.domain.assistant.events.EventName.THREAD_RUN_COMPLETED;
+import static io.github.sashirestela.openai.domain.assistant.events.EventName.THREAD_RUN_INCOMPLETE;
 import static io.github.sashirestela.openai.domain.assistant.events.EventName.THREAD_RUN_CREATED;
 import static io.github.sashirestela.openai.domain.assistant.events.EventName.THREAD_RUN_EXPIRED;
 import static io.github.sashirestela.openai.domain.assistant.events.EventName.THREAD_RUN_FAILED;
@@ -39,7 +40,7 @@ import static io.github.sashirestela.openai.domain.assistant.events.EventName.TH
 
 @StreamType(type = Thread.class, events = { THREAD_CREATED })
 @StreamType(type = ThreadRun.class, events = { THREAD_RUN_CREATED, THREAD_RUN_QUEUED, THREAD_RUN_IN_PROGRESS,
-        THREAD_RUN_REQUIRES_ACTION, THREAD_RUN_COMPLETED, THREAD_RUN_FAILED, THREAD_RUN_CANCELLING,
+        THREAD_RUN_REQUIRES_ACTION, THREAD_RUN_COMPLETED, THREAD_RUN_INCOMPLETE, THREAD_RUN_FAILED, THREAD_RUN_CANCELLING,
         THREAD_RUN_CANCELLED, THREAD_RUN_EXPIRED })
 @StreamType(type = ThreadRunStep.class, events = { THREAD_RUN_STEP_CREATED, THREAD_RUN_STEP_IN_PROGRESS,
         THREAD_RUN_STEP_COMPLETED, THREAD_RUN_STEP_FAILED, THREAD_RUN_STEP_CANCELLED, THREAD_RUN_STEP_EXPIRED })
