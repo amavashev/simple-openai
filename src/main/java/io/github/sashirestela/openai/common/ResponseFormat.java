@@ -62,11 +62,18 @@ public class ResponseFormat {
         private Boolean strict;
 
         @Builder
-        public JsonSchema(String description, @NonNull String name, Boolean strict, Class<?> schemaClass) {
+        public JsonSchema(String description, @NonNull String name, Boolean strict, Class<?> schemaClass,
+                JsonNode schema) {
             this.description = description;
             this.name = name;
             this.strict = strict;
-            this.schema = new DefaultSchemaConverter(Boolean.TRUE).convert(schemaClass);
+            if (schema != null) {
+                this.schema = schema;
+            } else {
+                this.schema = schemaClass != null
+                        ? new DefaultSchemaConverter(Boolean.TRUE).convert(schemaClass)
+                        : null;
+            }
         }
 
     }
