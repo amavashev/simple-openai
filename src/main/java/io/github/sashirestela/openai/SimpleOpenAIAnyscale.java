@@ -1,9 +1,14 @@
 package io.github.sashirestela.openai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.sashirestela.openai.base.ClientConfig;
+import io.github.sashirestela.openai.base.OpenAIConfigurator;
+import io.github.sashirestela.openai.base.OpenAIProvider;
+import io.github.sashirestela.openai.service.ChatCompletionServices;
 import io.github.sashirestela.openai.support.Constant;
 import lombok.Builder;
 import lombok.NonNull;
+import lombok.experimental.SuperBuilder;
 
 import java.net.http.HttpClient;
 import java.util.Map;
@@ -12,7 +17,8 @@ import java.util.Optional;
 /**
  * The Anyscale OpenAI implementation which implements a subset of the standard services.
  */
-public class SimpleOpenAIAnyscale extends BaseSimpleOpenAI {
+public class SimpleOpenAIAnyscale extends OpenAIProvider implements
+        ChatCompletionServices {
 
     /**
      * Constructor used to generate a builder.
@@ -26,27 +32,32 @@ public class SimpleOpenAIAnyscale extends BaseSimpleOpenAI {
     @Builder
     public SimpleOpenAIAnyscale(@NonNull String apiKey, String baseUrl, HttpClient httpClient,
             ObjectMapper objectMapper) {
-        super(prepareBaseSimpleOpenAIArgs(apiKey, baseUrl, httpClient, objectMapper));
-    }
-
-    public static BaseSimpleOpenAIArgs prepareBaseSimpleOpenAIArgs(String apiKey, String baseUrl,
-            HttpClient httpClient, ObjectMapper objectMapper) {
-        var headers = Map.of(Constant.AUTHORIZATION_HEADER, Constant.BEARER_AUTHORIZATION + apiKey);
-
-        return BaseSimpleOpenAIArgs.builder()
-                .baseUrl(Optional.ofNullable(baseUrl).orElse(Constant.ANYSCALE_BASE_URL))
-                .headers(headers)
+        super(AnyscaleConfigurator.builder()
+                .apiKey(apiKey)
+                .baseUrl(baseUrl)
                 .httpClient(httpClient)
                 .objectMapper(objectMapper)
-                .build();
+                .build());
     }
 
-    /**
-     * Throw not implemented
-     */
     @Override
-    public OpenAI.Files files() {
-        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+    public OpenAI.ChatCompletions chatCompletions() {
+        return getOrCreateService(OpenAI.ChatCompletions.class);
+    }
+
+    @SuperBuilder
+    static class AnyscaleConfigurator extends OpenAIConfigurator {
+
+        @Override
+        public ClientConfig buildConfig() {
+            return ClientConfig.builder()
+                    .baseUrl(Optional.ofNullable(baseUrl).orElse(Constant.ANYSCALE_BASE_URL))
+                    .headers(Map.of(Constant.AUTHORIZATION_HEADER, Constant.BEARER_AUTHORIZATION + apiKey))
+                    .httpClient(httpClient)
+                    .objectMapper(objectMapper)
+                    .build();
+        }
+
     }
 
 }

@@ -4,8 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.sashirestela.openai.BaseSimpleOpenAI;
-import io.github.sashirestela.openai.SimpleOpenAI;
 import io.github.sashirestela.openai.common.ResponseFormat;
 import io.github.sashirestela.openai.common.ResponseFormat.JsonSchema;
 import io.github.sashirestela.openai.common.audio.AudioFormat;
@@ -28,6 +26,7 @@ import io.github.sashirestela.openai.domain.chat.ChatMessage.UserMessage;
 import io.github.sashirestela.openai.domain.chat.ChatRequest;
 import io.github.sashirestela.openai.domain.chat.ChatRequest.Audio;
 import io.github.sashirestela.openai.domain.chat.ChatRequest.Modality;
+import io.github.sashirestela.openai.service.ChatCompletionServices;
 import io.github.sashirestela.openai.support.Base64Util;
 import io.github.sashirestela.openai.support.Base64Util.MediaType;
 
@@ -36,15 +35,22 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class ChatDemo extends AbstractDemo {
 
     protected ChatRequest chatRequest;
     protected String model;
     protected String modelAudio;
+    protected long sleepSeconds;
+    protected ChatCompletionServices chatProvider;
 
-    public ChatDemo(BaseSimpleOpenAI openAI, String model, String modelAudio) {
-        super(openAI);
+    public ChatDemo(String model, String modelAudio) {
+        this("standard", model, modelAudio);
+    }
+
+    protected ChatDemo(String provider, String model, String modelAudio) {
+        super(provider);
         this.model = model;
         this.modelAudio = modelAudio;
         chatRequest = ChatRequest.builder()
@@ -52,18 +58,20 @@ public class ChatDemo extends AbstractDemo {
                 .message(SystemMessage.of("You are an expert in AI."))
                 .message(UserMessage.of("Write a technical article about ChatGPT, no more than 100 words."))
                 .temperature(0.0)
-                .maxCompletionTokens(300)
+                .maxTokens(300)
                 .build();
+        this.sleepSeconds = 0; // No sleep by default
+        this.chatProvider = this.openAI;
     }
 
     public void demoCallChatStreaming() {
-        var futureChat = openAI.chatCompletions().createStream(chatRequest);
+        var futureChat = chatProvider.chatCompletions().createStream(chatRequest);
         var chatResponse = futureChat.join();
-        chatResponse.forEach(ChatDemo::processResponseChunk);
+        chatResponse.forEach(this::processResponseChunk);
     }
 
     public void demoCallChatBlocking() {
-        var futureChat = openAI.chatCompletions().create(chatRequest);
+        var futureChat = chatProvider.chatCompletions().create(chatRequest);
         var chatResponse = futureChat.join();
         System.out.println(chatResponse.firstContent());
     }
@@ -98,7 +106,7 @@ public class ChatDemo extends AbstractDemo {
                 .messages(messages)
                 .tools(functionExecutor.getToolFunctions())
                 .build();
-        var futureChat = openAI.chatCompletions().create(chatRequest);
+        var futureChat = chatProvider.chatCompletions().create(chatRequest);
         var chatResponse = futureChat.join();
         var chatMessage = chatResponse.firstMessage();
         var chatToolCall = chatMessage.getToolCalls().get(0);
@@ -110,13 +118,14 @@ public class ChatDemo extends AbstractDemo {
                 .messages(messages)
                 .tools(functionExecutor.getToolFunctions())
                 .build();
-        futureChat = openAI.chatCompletions().create(chatRequest);
+        sleep();
+        futureChat = chatProvider.chatCompletions().create(chatRequest);
         chatResponse = futureChat.join();
         System.out.println(chatResponse.firstContent());
     }
 
     public void demoCallChatWithVisionExternalImage() {
-        var chatRequest = ChatRequest.builder()
+        chatRequest = ChatRequest.builder()
                 .model(model)
                 .messages(List.of(
                         UserMessage.of(List.of(
@@ -125,15 +134,15 @@ public class ChatDemo extends AbstractDemo {
                                 ContentPartImageUrl.of(ImageUrl.of(
                                         "https://upload.wikimedia.org/wikipedia/commons/e/eb/Machu_Picchu%2C_Peru.jpg"))))))
                 .temperature(0.0)
-                .maxCompletionTokens(500)
+                .maxTokens(500)
                 .build();
-        var chatResponse = openAI.chatCompletions().createStream(chatRequest).join();
-        chatResponse.forEach(ChatDemo::processResponseChunk);
+        var chatResponse = chatProvider.chatCompletions().createStream(chatRequest).join();
+        chatResponse.forEach(this::processResponseChunk);
         System.out.println();
     }
 
     public void demoCallChatWithVisionLocalImage() {
-        var chatRequest = ChatRequest.builder()
+        chatRequest = ChatRequest.builder()
                 .model(model)
                 .messages(List.of(
                         UserMessage.of(List.of(
@@ -142,15 +151,15 @@ public class ChatDemo extends AbstractDemo {
                                 ContentPartImageUrl.of(ImageUrl.of(
                                         Base64Util.encode("src/demo/resources/machupicchu.jpg", MediaType.IMAGE)))))))
                 .temperature(0.0)
-                .maxCompletionTokens(500)
+                .maxTokens(500)
                 .build();
-        var chatResponse = openAI.chatCompletions().createStream(chatRequest).join();
-        chatResponse.forEach(ChatDemo::processResponseChunk);
+        var chatResponse = chatProvider.chatCompletions().createStream(chatRequest).join();
+        chatResponse.forEach(this::processResponseChunk);
         System.out.println();
     }
 
     public void demoCallChatWithStructuredOutputs() {
-        var chatRequest = ChatRequest.builder()
+        chatRequest = ChatRequest.builder()
                 .model(model)
                 .message(SystemMessage
                         .of("You are a helpful math tutor. Guide the user through the solution step by step."))
@@ -160,8 +169,8 @@ public class ChatDemo extends AbstractDemo {
                         .schemaClass(MathReasoning.class)
                         .build()))
                 .build();
-        var chatResponse = openAI.chatCompletions().createStream(chatRequest).join();
-        chatResponse.forEach(ChatDemo::processResponseChunk);
+        var chatResponse = chatProvider.chatCompletions().createStream(chatRequest).join();
+        chatResponse.forEach(this::processResponseChunk);
         System.out.println();
     }
 
@@ -173,7 +182,7 @@ public class ChatDemo extends AbstractDemo {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        var chatRequest = ChatRequest.builder()
+        chatRequest = ChatRequest.builder()
                 .model(model)
                 .message(SystemMessage
                         .of("You are a helpful math tutor. Guide the user through the solution step by step."))
@@ -183,8 +192,8 @@ public class ChatDemo extends AbstractDemo {
                         .schema(schema)
                         .build()))
                 .build();
-        var chatResponse = openAI.chatCompletions().createStream(chatRequest).join();
-        chatResponse.forEach(ChatDemo::processResponseChunk);
+        var chatResponse = chatProvider.chatCompletions().createStream(chatRequest).join();
+        chatResponse.forEach(this::processResponseChunk);
         System.out.println();
     }
 
@@ -200,7 +209,7 @@ public class ChatDemo extends AbstractDemo {
                 .audio(Audio.of(Voice.ALLOY, AudioFormat.MP3))
                 .messages(messages)
                 .build();
-        var chatResponse = openAI.chatCompletions().create(chatRequest).join();
+        var chatResponse = chatProvider.chatCompletions().create(chatRequest).join();
         var audio = chatResponse.firstMessage().getAudio();
         Base64Util.decode(audio.getData(), "src/demo/resources/answer1.mp3");
         System.out.println("Answer 1: " + audio.getTranscript());
@@ -215,15 +224,15 @@ public class ChatDemo extends AbstractDemo {
                 .audio(Audio.of(Voice.ALLOY, AudioFormat.MP3))
                 .messages(messages)
                 .build();
-        chatResponse = openAI.chatCompletions().create(chatRequest).join();
+        chatResponse = chatProvider.chatCompletions().create(chatRequest).join();
         audio = chatResponse.firstMessage().getAudio();
         Base64Util.decode(audio.getData(), "src/demo/resources/answer2.mp3");
         System.out.println("Answer 2: " + audio.getTranscript());
     }
 
-    private static void processResponseChunk(Chat responseChunk) {
+    private void processResponseChunk(Chat responseChunk) {
         var choices = responseChunk.getChoices();
-        if (choices.size() > 0) {
+        if (!choices.isEmpty()) {
             var delta = choices.get(0).getMessage();
             if (delta.getContent() != null) {
                 System.out.print(delta.getContent());
@@ -233,6 +242,16 @@ public class ChatDemo extends AbstractDemo {
         if (usage != null) {
             System.out.println("\n");
             System.out.println(usage);
+        }
+    }
+
+    private void sleep() {
+        if (this.sleepSeconds > 0) {
+            try {
+                TimeUnit.SECONDS.sleep(this.sleepSeconds);
+            } catch (InterruptedException e) {
+                java.lang.Thread.currentThread().interrupt();
+            }
         }
     }
 
@@ -294,11 +313,7 @@ public class ChatDemo extends AbstractDemo {
     }
 
     public static void main(String[] args) {
-        var openAI = SimpleOpenAI.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .build();
-        var demo = new ChatDemo(openAI, "gpt-4o-mini", "gpt-4o-audio-preview");
+        var demo = new ChatDemo("gpt-4o-mini", "gpt-4o-audio-preview");
 
         demo.addTitleAction("Call Chat (Streaming Approach)", demo::demoCallChatStreaming);
         demo.addTitleAction("Call Chat (Blocking Approach)", demo::demoCallChatBlocking);

@@ -19,47 +19,54 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Singular;
 import lombok.ToString;
+import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
 @Getter
 @ToString
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(Include.NON_EMPTY)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class Configuration {
+public class RealtimeSession {
+
+    protected String id;
+
+    protected String object;
 
     @Singular
-    private List<Modality> modalities;
+    protected List<Modality> modalities;
 
-    private String instructions;
+    protected String model;
 
-    private VoiceRealtime voice;
+    protected String instructions;
 
-    private AudioFormatRealtime inputAudioFormat;
+    protected VoiceRealtime voice;
 
-    private AudioFormatRealtime outputAudioFormat;
+    protected AudioFormatRealtime inputAudioFormat;
 
-    private InputAudioTranscription inputAudioTranscription;
+    protected AudioFormatRealtime outputAudioFormat;
 
-    private TurnDetection turnDetection;
+    protected InputAudioTranscription inputAudioTranscription;
+
+    protected TurnDetection turnDetection;
 
     @Singular
-    private List<ToolRealtime> tools;
+    protected List<ToolRealtime> tools;
 
     @ObjectType(baseClass = String.class)
     @ObjectType(baseClass = ToolChoiceOption.class)
-    private Object toolChoice;
+    protected Object toolChoice;
 
     @Range(min = 0.6, max = 1.2)
-    private Double temperature;
+    protected Double temperature;
 
     @Range(min = 1, max = 4096)
     @ObjectType(baseClass = Integer.class)
     @ObjectType(baseClass = String.class)
-    private Object maxResponseOutputTokens;
+    protected Object maxResponseOutputTokens;
 
     public enum VoiceRealtime {
 
@@ -132,6 +139,8 @@ public class Configuration {
         private Integer prefixPaddingMs;
 
         private Integer silenceDurationMs;
+
+        private Boolean createReponse;
 
     }
 

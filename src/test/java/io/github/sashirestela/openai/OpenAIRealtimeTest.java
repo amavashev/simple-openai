@@ -2,10 +2,10 @@ package io.github.sashirestela.openai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.sashirestela.cleverclient.support.Configurator;
-import io.github.sashirestela.openai.OpenAIRealtime.BaseRealtimeConfig;
+import io.github.sashirestela.openai.base.RealtimeConfig;
 import io.github.sashirestela.openai.domain.realtime.BaseEvent;
 import io.github.sashirestela.openai.domain.realtime.ClientEvent;
-import io.github.sashirestela.openai.domain.realtime.Configuration;
+import io.github.sashirestela.openai.domain.realtime.RealtimeResponse;
 import io.github.sashirestela.openai.domain.realtime.ServerEvent;
 import io.github.sashirestela.openai.support.Action;
 import io.github.sashirestela.openai.support.Constant;
@@ -70,7 +70,7 @@ class OpenAIRealtimeTest {
 
         openAIRealtime = OpenAIRealtime.builder()
                 .httpClient(mockHttpClient)
-                .baseRealtimeConfig(BaseRealtimeConfig.builder()
+                .realtimeConfig(RealtimeConfig.builder()
                         .endpointUrl(ENDPOINT_URL)
                         .headers(Map.of(Constant.AUTHORIZATION_HEADER, Constant.BEARER_AUTHORIZATION + API_KEY,
                                 Constant.OPENAI_BETA_HEADER, Constant.OPENAI_REALTIME_VERSION))
@@ -102,7 +102,7 @@ class OpenAIRealtimeTest {
         // Arrange
         CompletableFuture<WebSocket> future = CompletableFuture.completedFuture(mockWebSocket);
         BaseEvent clientEvent = ClientEvent.ResponseCreate.of("eventId",
-                Configuration.builder().instructions("instructions").build());
+                RealtimeResponse.builder().instructions("instructions").build());
         when(mockWebSocketBuilder.buildAsync(any(URI.class), any(WebSocket.Listener.class))).thenReturn(future);
 
         // Act

@@ -15,6 +15,7 @@ import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
 import io.github.sashirestela.slimvalidator.constraints.ObjectType;
 import io.github.sashirestela.slimvalidator.constraints.Range;
 import io.github.sashirestela.slimvalidator.constraints.Required;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Singular;
@@ -26,6 +27,7 @@ import java.util.Map;
 
 @Getter
 @Builder
+@AllArgsConstructor
 @JsonInclude(Include.NON_EMPTY)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ChatRequest {
@@ -38,6 +40,8 @@ public class ChatRequest {
     private String model;
 
     private Boolean store;
+
+    private ReasoningEffort reasoningEffort;
 
     private Map<String, String> metadata;
 
@@ -145,6 +149,17 @@ public class ChatRequest {
             return new Audio(voice, format);
         }
 
+    }
+
+    public enum ReasoningEffort {
+        @JsonProperty("low")
+        LOW,
+
+        @JsonProperty("medium")
+        MEDIUM,
+
+        @JsonProperty("high")
+        HIGH;
     }
 
 }

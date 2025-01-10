@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
@@ -77,7 +76,7 @@ public class DomainTestingHelper {
         for (var stepEntry : stepsByMockType.entrySet()) {
             switch (stepEntry.getKey()) {
                 case STREAM:
-                    var respStream = responseSequence(stepEntry, Stream.class);
+                    var respStream = responseSequence(stepEntry.getValue(), Stream.class);
                     when(httpClient.sendAsync(any(HttpRequest.class),
                             any(HttpResponse.BodyHandlers.ofLines().getClass())))
                             .thenReturn(CompletableFuture.completedFuture(httpResponseStream));
@@ -90,7 +89,7 @@ public class DomainTestingHelper {
                     }
                     break;
                 case OBJECT:
-                    var respObject = responseSequence(stepEntry, String.class);
+                    var respObject = responseSequence(stepEntry.getValue(), String.class);
                     when(httpClient.sendAsync(any(HttpRequest.class),
                             any(HttpResponse.BodyHandlers.ofString().getClass())))
                             .thenReturn(CompletableFuture.completedFuture(httpResponseObject));
@@ -103,7 +102,7 @@ public class DomainTestingHelper {
                     }
                     break;
                 case BINARY:
-                    var respBinary = responseSequence(stepEntry, InputStream.class);
+                    var respBinary = responseSequence(stepEntry.getValue(), InputStream.class);
                     when(httpClient.sendAsync(any(HttpRequest.class),
                             any(HttpResponse.BodyHandlers.ofInputStream().getClass())))
                             .thenReturn(CompletableFuture.completedFuture(httpResponseBinary));
@@ -119,24 +118,37 @@ public class DomainTestingHelper {
         }
     }
 
-    private <T> T[] responseSequence(Entry<MockForType, List<String>> stepEntry, Class<T> type) throws IOException {
-        List<T> response = new ArrayList<>();
-        switch (stepEntry.getKey()) {
-            case STREAM:
-                for (var fileName : stepEntry.getValue()) {
-                    response.add((T) Files.readAllLines(Paths.get(fileName)).stream());
-                }
-                return (T[]) response.toArray(new Stream[0]);
-            case OBJECT:
-                for (var fileName : stepEntry.getValue()) {
-                    response.add((T) Files.readAllLines(Paths.get(fileName)).get(0));
-                }
-                return (T[]) response.toArray(new String[0]);
-            case BINARY:
-                for (var fileName : stepEntry.getValue()) {
-                    response.add((T) new FileInputStream(fileName));
-                }
-                return (T[]) response.toArray(new InputStream[0]);
+    private Stream<String>[] responseSequenceStream(List<String> fileNames) throws IOException {
+        List<Stream<String>> response = new ArrayList<>();
+        for (var fileName : fileNames) {
+            response.add(Files.readAllLines(Paths.get(fileName)).stream());
+        }
+        return response.toArray(new Stream[0]);
+    }
+
+    private String[] responseSequenceObject(List<String> fileNames) throws IOException {
+        List<String> response = new ArrayList<>();
+        for (var fileName : fileNames) {
+            response.add(Files.readAllLines(Paths.get(fileName)).get(0));
+        }
+        return response.toArray(new String[0]);
+    }
+
+    private InputStream[] responseSequenceBinary(List<String> fileNames) throws IOException {
+        List<InputStream> response = new ArrayList<>();
+        for (var fileName : fileNames) {
+            response.add(new FileInputStream(fileName));
+        }
+        return response.toArray(new InputStream[0]);
+    }
+
+    private <T> T[] responseSequence(List<String> fileNames, Class<T> type) throws IOException {
+        if (type == Stream.class) {
+            return (T[]) responseSequenceStream(fileNames);
+        } else if (type == String.class) {
+            return (T[]) responseSequenceObject(fileNames);
+        } else if (type == InputStream.class) {
+            return (T[]) responseSequenceBinary(fileNames);
         }
         return null;
     }

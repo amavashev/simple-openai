@@ -1,10 +1,10 @@
 package io.github.sashirestela.openai.demo;
 
 import io.github.sashirestela.openai.SimpleOpenAI;
-import io.github.sashirestela.openai.SimpleOpenAI.RealtimeConfig;
+import io.github.sashirestela.openai.base.RealtimeConfig;
 import io.github.sashirestela.openai.domain.chat.ChatRequest.Modality;
 import io.github.sashirestela.openai.domain.realtime.ClientEvent;
-import io.github.sashirestela.openai.domain.realtime.Configuration;
+import io.github.sashirestela.openai.domain.realtime.RealtimeSession;
 import io.github.sashirestela.openai.domain.realtime.ServerEvent;
 
 import javax.sound.sampled.AudioFormat;
@@ -23,19 +23,19 @@ public class RealtimeDemo {
 
     private static final int BUFFER_SIZE = 8192;
 
-    public static void main(String[] args) throws LineUnavailableException, InterruptedException {
+    public static void main(String[] args) throws LineUnavailableException {
         var sound = new Sound();
 
         var openAI = SimpleOpenAI.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .realtimeConfig(RealtimeConfig.of("gpt-4o-realtime-preview-2024-10-01"))
+                .realtimeConfig(RealtimeConfig.of("gpt-4o-mini-realtime-preview"))
                 .build();
 
-        var configuration = Configuration.builder()
+        var session = RealtimeSession.builder()
                 .modality(Modality.AUDIO)
                 .instructions("Respond with short, direct sentences.")
-                .voice(Configuration.VoiceRealtime.ECHO)
-                .outputAudioFormat(Configuration.AudioFormatRealtime.PCM16)
+                .voice(RealtimeSession.VoiceRealtime.ECHO)
+                .outputAudioFormat(RealtimeSession.AudioFormatRealtime.PCM16)
                 .inputAudioTranscription(null)
                 .turnDetection(null)
                 .temperature(0.9)
@@ -63,7 +63,7 @@ public class RealtimeDemo {
         realtime.connect().thenRun(() -> {
             System.out.println("Connection established!");
             System.out.println("(Press any key and Return to terminate)");
-            realtime.send(ClientEvent.SessionUpdate.of(configuration)).join();
+            realtime.send(ClientEvent.SessionUpdate.of(session)).join();
         }).join();
 
         Scanner scanner = new Scanner(System.in);

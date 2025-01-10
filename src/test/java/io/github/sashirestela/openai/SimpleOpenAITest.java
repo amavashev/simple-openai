@@ -2,9 +2,10 @@ package io.github.sashirestela.openai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.sashirestela.cleverclient.CleverClient;
-import io.github.sashirestela.openai.SimpleOpenAI.RealtimeConfig;
+import io.github.sashirestela.openai.base.RealtimeConfig;
 import io.github.sashirestela.openai.domain.chat.ChatMessage.UserMessage;
 import io.github.sashirestela.openai.domain.chat.ChatRequest;
+import io.github.sashirestela.openai.exception.SimpleOpenAIException;
 import io.github.sashirestela.openai.support.Constant;
 import io.github.sashirestela.slimvalidator.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
@@ -35,34 +36,54 @@ class SimpleOpenAITest {
     CleverClient cleverClient = mock(CleverClient.class);
 
     @Test
-    void shouldPrepareBaseOpenSimpleAIArgsCorrectly() {
-        var args = SimpleOpenAI.prepareBaseSimpleOpenAIArgs("the-api-key", "orgId", "prjId", "https://example.org",
-                HttpClient.newHttpClient(), new ObjectMapper(), RealtimeConfig.of("the-model"));
-
-        assertEquals("https://example.org", args.getBaseUrl());
-        assertEquals(3, args.getHeaders().size());
-        assertEquals(Constant.BEARER_AUTHORIZATION + "the-api-key",
-                args.getHeaders().get(Constant.AUTHORIZATION_HEADER));
-        assertEquals("orgId", args.getHeaders().get(Constant.OPENAI_ORG_HEADER));
-        assertEquals("prjId", args.getHeaders().get(Constant.OPENAI_PRJ_HEADER));
-        assertNotNull(args.getHttpClient());
-        assertNotNull(args.getObjectMapper());
-        assertNotNull(args.getBaseRealtimeConfig());
-        assertNull(args.getRequestInterceptor());
+    void shouldCreateFullConfigWhenAllParametersArePassed() {
+        var clientConfig = SimpleOpenAI.StandardConfigurator.builder()
+                .apiKey("apiKey")
+                .organizationId("orgId")
+                .projectId("prjId")
+                .baseUrl("https://example.org")
+                .httpClient(HttpClient.newHttpClient())
+                .objectMapper(new ObjectMapper())
+                .realtimeConfig(RealtimeConfig.of("theModel"))
+                .build()
+                .buildConfig();
+        assertEquals("https://example.org", clientConfig.getBaseUrl());
+        assertEquals(3, clientConfig.getHeaders().size());
+        assertEquals(Constant.BEARER_AUTHORIZATION + "apiKey",
+                clientConfig.getHeaders().get(Constant.AUTHORIZATION_HEADER));
+        assertEquals("orgId", clientConfig.getHeaders().get(Constant.OPENAI_ORG_HEADER));
+        assertEquals("prjId", clientConfig.getHeaders().get(Constant.OPENAI_PRJ_HEADER));
+        assertNotNull(clientConfig.getHttpClient());
+        assertNotNull(clientConfig.getObjectMapper());
+        assertNotNull(clientConfig.getRealtimeConfig());
+        assertNull(clientConfig.getRequestInterceptor());
     }
 
     @Test
-    void shouldPrepareBaseOpenSimpleAIArgsCorrectlyWithOnlyApiKey() {
-        var args = SimpleOpenAI.prepareBaseSimpleOpenAIArgs("the-api-key", null, null, null, null, null, null);
+    void shouldCreateConfigWithDefaultValuesWhenRequiredParametersArePassed() {
+        var clientConfig = SimpleOpenAI.StandardConfigurator.builder()
+                .apiKey("apiKey")
+                .build()
+                .buildConfig();
 
-        assertEquals(Constant.OPENAI_BASE_URL, args.getBaseUrl());
-        assertEquals(1, args.getHeaders().size());
-        assertEquals(Constant.BEARER_AUTHORIZATION + "the-api-key",
-                args.getHeaders().get(Constant.AUTHORIZATION_HEADER));
-        assertNull(args.getHttpClient());
-        assertNull(args.getObjectMapper());
-        assertNull(args.getBaseRealtimeConfig());
-        assertNull(args.getRequestInterceptor());
+        assertEquals(Constant.OPENAI_BASE_URL, clientConfig.getBaseUrl());
+        assertEquals(1, clientConfig.getHeaders().size());
+        assertEquals(Constant.BEARER_AUTHORIZATION + "apiKey",
+                clientConfig.getHeaders().get(Constant.AUTHORIZATION_HEADER));
+        assertNull(clientConfig.getHttpClient());
+        assertNull(clientConfig.getObjectMapper());
+        assertNull(clientConfig.getRealtimeConfig());
+        assertNull(clientConfig.getRequestInterceptor());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenProjectIdIsProvidedAndOrganizationIdIsNot() {
+        var configurator = SimpleOpenAI.StandardConfigurator.builder()
+                .apiKey("apiKey")
+                .projectId("projectId")
+                .build();
+        var exception = assertThrows(SimpleOpenAIException.class, () -> configurator.buildConfig());
+        assertEquals("OrganizationId should be provided if ProjectId is provided.", exception.getMessage());
     }
 
     @Test
@@ -119,6 +140,7 @@ class SimpleOpenAITest {
                 new TestData(OpenAI.Images.class, openAI::images),
                 new TestData(OpenAI.Models.class, openAI::models),
                 new TestData(OpenAI.Moderations.class, openAI::moderations),
+                new TestData(OpenAI.SessionTokens.class, openAI::sessionTokens),
                 new TestData(OpenAI.Uploads.class, openAI::uploads),
                 new TestData(OpenAIBeta2.Assistants.class, openAI::assistants),
                 new TestData(OpenAIBeta2.Threads.class, openAI::threads),
