@@ -148,6 +148,7 @@ class SimpleOpenAITest {
                 new TestData(OpenAI.Moderations.class, openAI::moderations),
                 new TestData(OpenAI.SessionTokens.class, openAI::sessionTokens),
                 new TestData(OpenAI.Uploads.class, openAI::uploads),
+                new TestData(OpenAI.Responses.class, openAI::responses),
                 new TestData(OpenAIBeta2.Assistants.class, openAI::assistants),
                 new TestData(OpenAIBeta2.Threads.class, openAI::threads),
                 new TestData(OpenAIBeta2.ThreadMessages.class, openAI::threadMessages),
@@ -178,9 +179,10 @@ class SimpleOpenAITest {
                 .stop(List.of("one", "two", "three", "four", "five"))
                 .build();
         var exception = assertThrows(ConstraintViolationException.class, () -> chatService.create(chatRequest));
-        var expectedErrorMessage = "messages must have a value.\n"
-                + "stop type must be or String or Collection<String> (max 4 items).\n"
-                + "toolChoice type must be or ToolChoiceOption or ToolChoice.";
+        var expectedErrorMessage = ""
+                + "messages must have a value.\n"
+                + "stop type must be one of String or Collection<String> and size at most 4.\n"
+                + "toolChoice type must be one of ToolChoiceOption|ToolChoice.";
         assertEquals(expectedErrorMessage, exception.getMessage());
     }
 

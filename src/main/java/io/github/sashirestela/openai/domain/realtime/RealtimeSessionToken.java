@@ -7,12 +7,15 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 @NoArgsConstructor
-@Getter
 @ToString(callSuper = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class RealtimeSessionToken extends RealtimeSession {
 
     private Secret clientSecret;
+
+    public Secret getClientSecretAtResponse() {
+        return clientSecret;
+    }
 
     @NoArgsConstructor
     @Getter

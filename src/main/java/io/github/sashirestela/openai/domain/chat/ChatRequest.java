@@ -12,7 +12,9 @@ import io.github.sashirestela.openai.common.audio.Voice;
 import io.github.sashirestela.openai.common.tool.Tool;
 import io.github.sashirestela.openai.common.tool.ToolChoice;
 import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
+import io.github.sashirestela.openai.domain.response.ResponseTool.ContextSize;
 import io.github.sashirestela.slimvalidator.constraints.ObjectType;
+import io.github.sashirestela.slimvalidator.constraints.ObjectType.Schema;
 import io.github.sashirestela.slimvalidator.constraints.Range;
 import io.github.sashirestela.slimvalidator.constraints.Required;
 import lombok.AllArgsConstructor;
@@ -81,7 +83,7 @@ public class ChatRequest {
     private ServiceTier serviceTier;
 
     @ObjectType(baseClass = String.class)
-    @ObjectType(baseClass = String.class, firstGroup = true, maxSize = 4)
+    @ObjectType(schema = Schema.COLL, baseClass = String.class, maxSize = 4)
     private Object stop;
 
     @With
@@ -100,13 +102,14 @@ public class ChatRequest {
     private List<Tool> tools;
 
     @With
-    @ObjectType(baseClass = ToolChoiceOption.class)
-    @ObjectType(baseClass = ToolChoice.class)
+    @ObjectType(baseClass = { ToolChoiceOption.class, ToolChoice.class })
     private Object toolChoice;
 
     private Boolean parallelToolCalls;
 
     private String user;
+
+    private WebSearchOptions webSearchOptions;
 
     public enum Modality {
 
@@ -123,9 +126,14 @@ public class ChatRequest {
         @JsonProperty("auto")
         AUTO,
 
-        @JsonProperty("default")
-        DEFAULT;
+        @JsonProperty("flex")
+        FLEX,
 
+        @JsonProperty("default")
+        DEFAULT,
+
+        @JsonProperty("on_demand") // See https://console.groq.com/docs/flex-processing#service-tier-parameter
+        ON_DEMAND;
     }
 
     @Getter
@@ -152,6 +160,9 @@ public class ChatRequest {
     }
 
     public enum ReasoningEffort {
+        @JsonProperty("minimal")
+        MINIMAL,
+
         @JsonProperty("low")
         LOW,
 
@@ -159,7 +170,69 @@ public class ChatRequest {
         MEDIUM,
 
         @JsonProperty("high")
-        HIGH;
+        HIGH
+    }
+
+    @Getter
+    @ToString
+    @JsonInclude(Include.NON_EMPTY)
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public static class WebSearchOptions {
+
+        private ContextSize searchContextSize;
+        private UserLocation userLocation;
+
+        @Builder
+        public WebSearchOptions(ContextSize searchContextSize, UserLocation userLocation) {
+            this.searchContextSize = searchContextSize;
+            this.userLocation = userLocation;
+        }
+
+        public static WebSearchOptions of() {
+            return WebSearchOptions.builder().build();
+        }
+
+        @Getter
+        @ToString
+        @JsonInclude(Include.NON_EMPTY)
+        @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+        public static class UserLocation {
+
+            private ApproxLocation approximate;
+            private String type;
+
+            private UserLocation(ApproxLocation approximate) {
+                this.approximate = approximate;
+                this.type = "approximate";
+            }
+
+            public static UserLocation of(ApproxLocation approximate) {
+                return new UserLocation(approximate);
+            }
+
+        }
+
+        @Getter
+        @ToString
+        @JsonInclude(Include.NON_EMPTY)
+        @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+        public static class ApproxLocation {
+
+            private String city;
+            private String country;
+            private String region;
+            private String timezone;
+
+            @Builder
+            public ApproxLocation(String city, String country, String region, String timezone) {
+                this.city = city;
+                this.country = country;
+                this.region = region;
+                this.timezone = timezone;
+            }
+
+        }
+
     }
 
 }

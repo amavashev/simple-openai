@@ -1,5 +1,6 @@
 package io.github.sashirestela.openai;
 
+import io.github.sashirestela.cleverclient.Event;
 import io.github.sashirestela.cleverclient.annotation.Body;
 import io.github.sashirestela.cleverclient.annotation.DELETE;
 import io.github.sashirestela.cleverclient.annotation.GET;
@@ -11,6 +12,7 @@ import io.github.sashirestela.cleverclient.annotation.Resource;
 import io.github.sashirestela.openai.common.DeletedObject;
 import io.github.sashirestela.openai.common.Generic;
 import io.github.sashirestela.openai.common.Page;
+import io.github.sashirestela.openai.common.PageRequest;
 import io.github.sashirestela.openai.common.StreamOptions;
 import io.github.sashirestela.openai.common.tool.ToolChoiceOption;
 import io.github.sashirestela.openai.domain.audio.AudioResponseFormat;
@@ -45,6 +47,13 @@ import io.github.sashirestela.openai.domain.moderation.Moderation;
 import io.github.sashirestela.openai.domain.moderation.ModerationRequest;
 import io.github.sashirestela.openai.domain.realtime.RealtimeSession;
 import io.github.sashirestela.openai.domain.realtime.RealtimeSessionToken;
+import io.github.sashirestela.openai.domain.realtime.RealtimeTranscriptionSession;
+import io.github.sashirestela.openai.domain.realtime.RealtimeTranscriptionSessionToken;
+import io.github.sashirestela.openai.domain.response.InputItems;
+import io.github.sashirestela.openai.domain.response.Response;
+import io.github.sashirestela.openai.domain.response.ResponseRequest;
+import io.github.sashirestela.openai.domain.response.ResponseRequest.ResponseInclude;
+import io.github.sashirestela.openai.domain.response.stream.ResponseStreamEvent;
 import io.github.sashirestela.openai.domain.upload.Upload;
 import io.github.sashirestela.openai.domain.upload.UploadCompleteRequest;
 import io.github.sashirestela.openai.domain.upload.UploadPart;
@@ -594,68 +603,35 @@ public interface OpenAI {
     interface Images {
 
         /**
-         * Creates a Genric object of image given a prompt (don't call it directly).
-         * 
-         * @param imageRequest A text description of the desired image(s) and other parameters such as
-         *                     number, size or responseFormat.
-         * @return Returns a Generic of image objects (the url or the binary content).
-         */
-        @POST("/generations")
-        CompletableFuture<Generic<Image>> createPrimitive(@Body ImageRequest imageRequest);
-
-        /**
-         * Creates a Generic of edited or extended image given an original image and a prompt (don't call it
-         * directly).
-         * 
-         * @param imageRequest Includes the image file to edit and a text description of the desired
-         *                     image(s).
-         * @return Returns a Generic of image objects (the url or the binary content).
-         */
-        @Multipart
-        @POST("/edits")
-        CompletableFuture<Generic<Image>> createEditsPrimitive(@Body ImageEditsRequest imageRequest);
-
-        /**
-         * Creates a Generic of variation of a given image (don't call it directly).
-         * 
-         * @param imageRequest Includes the image file to use as the basis for the variation(s).
-         * @return Returns a Generic of image objects (the url or the binary content).
-         */
-        @Multipart
-        @POST("/variations")
-        CompletableFuture<Generic<Image>> createVariationsPrimitive(@Body ImageVariationsRequest imageRequest);
-
-        /**
          * Creates an image given a prompt.
          * 
          * @param imageRequest A text description of the desired image(s) and other parameters such as
          *                     number, size or responseFormat.
-         * @return Returns a list of image objects (the url or the binary content).
+         * @return Returns a list of image objects.
          */
-        default CompletableFuture<List<Image>> create(ImageRequest imageRequest) {
-            return createPrimitive(imageRequest).thenApply(Generic::getData);
-        }
+        @POST("/generations")
+        CompletableFuture<Image> create(@Body ImageRequest imageRequest);
 
         /**
          * Creates an edited or extended image given an original image and a prompt.
          * 
          * @param imageRequest Includes the image file to edit and a text description of the desired
          *                     image(s).
-         * @return Returns a list of image objects (the url or the binary content).
+         * @return Returns a list of image objects.
          */
-        default CompletableFuture<List<Image>> createEdits(ImageEditsRequest imageRequest) {
-            return createEditsPrimitive(imageRequest).thenApply(Generic::getData);
-        }
+        @Multipart
+        @POST("/edits")
+        CompletableFuture<Image> createEdits(@Body ImageEditsRequest imageRequest);
 
         /**
          * Creates a variation of a given image.
          * 
          * @param imageRequest Includes the image file to use as the basis for the variation(s).
-         * @return Returns a list of image objects (the url or the binary content).
+         * @return Returns a list of image objects.
          */
-        default CompletableFuture<List<Image>> createVariations(ImageVariationsRequest imageRequest) {
-            return createVariationsPrimitive(imageRequest).thenApply(Generic::getData);
-        }
+        @Multipart
+        @POST("/variations")
+        CompletableFuture<Image> createVariations(@Body ImageVariationsRequest imageRequest);
 
     }
 
@@ -732,17 +708,27 @@ public interface OpenAI {
      * @see <a href= "https://platform.openai.com/docs/api-reference/realtime-sessions">OpenAI
      *      Session-Tokens</a>
      */
-    @Resource("/v1/realtime/sessions")
+    @Resource("/v1/realtime")
     interface SessionTokens {
 
         /**
          * Create an ephemeral API token for use in client-side applications with the Realtime API.
          * 
-         * @param sessionRequest A Realtime session configuration including the model.
+         * @param sessionRequest A Realtime session configuration.
          * @return A new Realtime session configuration, with an ephermeral token.
          */
-        @POST
+        @POST("/sessions")
         CompletableFuture<RealtimeSessionToken> create(@Body RealtimeSession sessionRequest);
+
+        /**
+         * Create an ephemeral API token for use in client-side applications with the Realtime API
+         * specifically for realtime transcriptions.
+         * 
+         * @param sessionRequest A Realtime transcription session configuration.
+         * @return A new Realtime transcription session configuration, with an ephermeral token.
+         */
+        @POST("/transcription_sessions")
+        CompletableFuture<RealtimeTranscriptionSessionToken> create(@Body RealtimeTranscriptionSession sessionRequest);
 
     }
 
@@ -795,6 +781,177 @@ public interface OpenAI {
          */
         @POST("/{uploadId}/cancel")
         CompletableFuture<Upload> cancel(@Path("uploadId") String uploadId);
+
+    }
+
+    /**
+     * OpenAI's most advanced interface for generating model responses. Supports text and image inputs,
+     * and text outputs. Create stateful interactions with the model, using the output of previous
+     * responses as input. Extend the model's capabilities with built-in tools for file search, web
+     * search, computer use, and more. Allow the model access to external systems and data using
+     * function calling.
+     * 
+     * @see <a href= "https://platform.openai.com/docs/api-reference/responses">OpenAI Responses</a>
+     */
+    @Resource("/v1/responses")
+    interface Responses {
+
+        /**
+         * Creates a model response (don't call it directly).
+         * 
+         * @param responseRequest The creation request.
+         * @return A response object.
+         */
+        @POST
+        CompletableFuture<Response> createPrimitive(@Body ResponseRequest responseRequest);
+
+        /**
+         * Creates a model response with streaming (don't call it directly).
+         * 
+         * @param responseRequest The creation request.
+         * @return Stream of server-sent events emitted as the Response is generated.
+         */
+        @POST
+        @ResponseStreamEvent
+        CompletableFuture<Stream<Event>> createStreamPrimitive(@Body ResponseRequest responseRequest);
+
+        /**
+         * Creates a model response without streaming.
+         * 
+         * @param responseRequest The creation request.
+         * @return A response object.
+         */
+        default CompletableFuture<Response> create(ResponseRequest responseRequest) {
+            var newResponseRequest = responseRequest.withStream(Boolean.FALSE);
+            return createPrimitive(newResponseRequest);
+        }
+
+        /**
+         * Creates a model response by making sure to use streaming mode.
+         * 
+         * @param responseRequest The creation request.
+         * @return Stream of server-sent events emitted as the Response is generated.
+         */
+        default CompletableFuture<Stream<Event>> createStream(ResponseRequest responseRequest) {
+            var newResponseRequest = responseRequest.withStream(Boolean.TRUE);
+            return createStreamPrimitive(newResponseRequest);
+        }
+
+        /**
+         * Retrieves a model response with the given ID (don't call it directly).
+         * 
+         * @param responseId    The ID of the response to retrieve.
+         * @param include       Additional fields to include in the response.
+         * @param startingAfter The sequence number of the event after which to start streaming.
+         * @param stream        If set to true, the model response data will be streamed to the client.
+         * @return The Response object matching the specified ID.
+         */
+        @GET("/{responseId}")
+        CompletableFuture<Response> getOnePrimitive(@Path("responseId") String responseId,
+                @Query("include") List<ResponseInclude> include, @Query("starting_after") Integer startingAfter,
+                @Query("stream") Boolean stream);
+
+        /**
+         * Retrieves a model response with the given ID in streaming (don't call it directly).
+         * 
+         * @param responseId    The ID of the response to retrieve.
+         * @param include       Additional fields to include in the response.
+         * @param startingAfter The sequence number of the event after which to start streaming.
+         * @param stream        If set to true, the model response data will be streamed to the client.
+         * @return Stream of server-sent events emitted as the Response is queried.
+         */
+        @GET("/{responseId}")
+        @ResponseStreamEvent
+        CompletableFuture<Stream<Event>> getOneStreamPrimitive(@Path("responseId") String responseId,
+                @Query("include") List<ResponseInclude> include, @Query("starting_after") Integer startingAfter,
+                @Query("stream") Boolean stream);
+
+        /**
+         * Retrieves a model response with the given ID without streaming.
+         * 
+         * @param responseId    The ID of the response to retrieve.
+         * @param include       Additional fields to include in the response.
+         * @param startingAfter The sequence number of the event after which to start streaming.
+         * @return The Response object matching the specified ID.
+         */
+        default CompletableFuture<Response> getOne(String responseId, List<ResponseInclude> include,
+                Integer startingAfter) {
+            return getOnePrimitive(responseId, include, startingAfter, Boolean.FALSE);
+        }
+
+        /**
+         * Retrieves a model response with the given ID without streaming.
+         * 
+         * @param responseId The ID of the response to retrieve.
+         * @return The Response object matching the specified ID.
+         */
+        default CompletableFuture<Response> getOne(String responseId) {
+            return getOne(responseId, null, null);
+        }
+
+        /**
+         * Retrieves a model response with the given ID by making sure to use streaming mode.
+         * 
+         * @param responseId    The ID of the response to retrieve.
+         * @param include       Additional fields to include in the response.
+         * @param startingAfter The sequence number of the event after which to start streaming.
+         * @return Stream of server-sent events emitted as the Response is queried.
+         */
+        default CompletableFuture<Stream<Event>> getOneStream(String responseId, List<ResponseInclude> include,
+                Integer startingAfter) {
+            return getOneStreamPrimitive(responseId, include, startingAfter, Boolean.TRUE);
+        }
+
+        /**
+         * Retrieves a model response with the given ID by making sure to use streaming mode.
+         * 
+         * @param responseId The ID of the response to retrieve.
+         * @return Stream of server-sent events emitted as the Response is queried.
+         */
+        default CompletableFuture<Stream<Event>> getOneStream(String responseId) {
+            return getOneStream(responseId, null, null);
+        }
+
+        /**
+         * Deletes a model response with the given ID.
+         * 
+         * @param responseId The ID of the response to delete.
+         * @return The deleted response.
+         */
+        @DELETE("/{responseId}")
+        CompletableFuture<DeletedObject> delete(@Path("responseId") String responseId);
+
+        /**
+         * Cancels a model response with the given ID. Only responses created with the background parameter
+         * set to true can be cancelled.
+         * 
+         * @param responseId The ID of the response to cancel.
+         * @return The cancelled response.
+         */
+        @POST("/{responseId}/cancel")
+        CompletableFuture<Response> cancel(@Path("responseId") String responseId);
+
+        /**
+         * Returns a list of input items for a given response.
+         * 
+         * @param responseId The ID of the response to retrieve input items for.
+         * @param include    Additional fields to include in the response.
+         * @param page       The page filter to narrow the list.
+         * @return A list of input item objects.
+         */
+        @GET("/{responseId}/input_items")
+        CompletableFuture<InputItems> getListInputItem(@Path("responseId") String responseId,
+                @Query("include") List<ResponseInclude> include, @Query PageRequest page);
+
+        /**
+         * Returns a list of input items for a given response (first page).
+         * 
+         * @param responseId The ID of the response to retrieve input items for.
+         * @return A list of input item objects.
+         */
+        default CompletableFuture<InputItems> getListInputItem(@Path("responseId") String responseId) {
+            return getListInputItem(responseId, null, PageRequest.builder().build());
+        }
 
     }
 
